@@ -202,7 +202,7 @@ begin
 	fn := gsComputerName + '-';
 	fn := fn + LeftStr(el, 3) + '-';
 	fn := fn + ConvertProperDateTimeToDateTimeFs(sDateTime) + '-';
-	fn := fn + GetRandomString(4);
+	fn := fn + GetRandomString(8);
 	GetPathExport := GetLocalExportFolder(el) + '\' + fn;
 end; // of function GetPathExport
 
@@ -220,14 +220,6 @@ var
 	//sDateTimeLast: string;
 	//sDateTimeNow: string;
 begin
-	WriteLn;
-	//WriteLn('RunLogparser(): ' + sEventLog);
-
-	WriteLn('RunLogparser():');
-	WriteLn('  Exporting events from Event Log : ' + sEventLog);
-	WriteLn('                        from date : ' + sDateTimeLast);
-	WriteLn('                             upto : ' + sDateTimeNow);
-	Writeln('                 into export file : ' + sPathLpr);
 	
 	//WriteLn('SECONDS=', SecondsBetween(StrToDateTime(sDateTimeLast), StrToDateTime(sDateTimeNow)));
 	
@@ -250,7 +242,7 @@ begin
 	c := c + '-stats:OFF -oSeparator:"|" ';
 	c := c + '>' + sPathLpr;
 	
-	WriteLn('Running:');
+	WriteLn('RunLogparser(): running command line:');
 	WriteLn;
 	WriteLn(c);
 	WriteLn;
@@ -362,9 +354,8 @@ procedure ProgRun();
 begin
 	//sEventLog := 'Security';
 	ExportEventLog('Security');
-	ExportEventLog('System');
-	ExportEventLog('Application');
-	
+	//ExportEventLog('System');
+	//ExportEventLog('Application');
 end; // of procedure ProgRun
 
 
