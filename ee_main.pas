@@ -26,7 +26,7 @@ uses
 	SysUtils,
 	ee_global,
 	ee_export,
-	//ee_convert,
+	ee_convert,
 	USupportLibrary,
 	UTextFile;
 
@@ -50,16 +50,19 @@ procedure ProgInit();
 //var
 //	i: integer;
 begin
-	ProgTitle();
-
+	// Set the defaults for some variables.
+	
+	gbFlagConvert := true;
+	
 	// Get the computer name of where this program is running.
 	gsComputerName := GetCurrentComputerName();
 	
-	// Generate a unique session ID for this run of the program.
-	//gsUniqueSessionId := GetRandomString(MAX_RANDOM_STRING);
-	
 	// Create a PID (Process ID) file for the run of this program.
 	gsPathPid := GetPathOfPidFile();
+	
+	// Display the program title text.
+	ProgTitle();
+
 	
 	// Dot not convert the LPR file to SKV.
 	//gbDoConvert := false;
@@ -101,13 +104,38 @@ end; // of procedure ProgInit()
 
 
 procedure ProgRun();
+var
+	pathLpr: string;
+	sizeLpr: integer;
 begin
 	//sEventLog := 'Security';
-	ExportEventLog('Security');		// From unit ee_export
+	pathLpr := ExportEventLog('Security');		// From unit ee_export
+	WriteLn('Export is done to: ', pathLpr);
+	sizeLpr := GetFileSizeInBytes(pathLpr);
+	if sizeLpr > 0 then
+	begin
+		WriteLn('Export file contains ', sizeLpr, ' bytes.');
+		
+		if gbFlagConvert = true then
+		begin
+			ConvertLpr(pathLpr);
+		end; // of if
+	end;
+	
+	
 	//ExportEventLog('System');
 	//ExportEventLog('Application');
 end; // of procedure ProgRun
 
+
+procedure ProgTest();
+var
+	pathLpr: string;
+begin
+	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
+	
+	ConvertLpr(pathLpr);
+end; // of procedure ProgTest
 
 
 procedure ProgDone();
@@ -122,7 +150,7 @@ end; // of procedure ProgDone()
 
 begin
 	ProgInit();
-	ProgRun();
-	//ProgTest();
+	//ProgRun();
+	ProgTest();
 	ProgDone();
 end. // of program ExportEvents

@@ -23,13 +23,10 @@ uses
 	ee_global;
 
 	
-procedure ExportEventLog(el: string);
+function ExportEventLog(el: string) : string;
 
 	
 implementation
-
-
-
 
 
 function GetPathLastRun(sEventLog: string): string;
@@ -163,16 +160,27 @@ begin
 end; // of procedure RunLogparser
 
 
-procedure ExportEventLog(el: string);
+function ExportEventLog(el: string) : string;
+//
+//	Export Event logs
+//
+//	el		Name of the event log to export
+//
+//	Returns the full path to the export file
+//
 var
 	sDateTimeLast: string;
 	sDateTimeNow: string;
 	sPathLpr: string;
 	intResult: integer;
+	r: string;
 begin
+	// Initialize all variables
+	r := '';
 	sDateTimeLast := LastRunGet(el);
 	sDateTimeNow := LastRunPut(el);
 
+	// Build the path of the export file
 	sPathLpr := GetPathExport(el, sDateTimeLast) + EXTENSION_LPR;
 	
 	WriteLn('ExportEventLog()');
@@ -186,18 +194,20 @@ begin
 	if intResult = 0 then
 	begin
 		WriteLn('Logparser ran OK!');
+		r := sPathLpr;
 	end
 	else
 	begin
 		WriteLn('Logparser returned an error: ', intResult);
 	end; // if else
+	ExportEventLog := r;
 end; // procedure ExportEventLog
-
 
 
 end.
 
-// end of unit ulat_db
+
+// end of unit ee_export
 
 
 

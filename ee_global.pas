@@ -31,7 +31,9 @@ const
 	EXTENSION_SKV = 			'.skv';
 
 var
-	gsComputerName: string;	
+	gsComputerName: string;
+	gbFlagConvert: boolean;				// Flag to convert the LPR file to a SKV. (TRUE=Convert/FALSE=Do not convert)
+	gbFlagIncludeComputer: boolean;		// Flag to include or exclude the computer accounts in the conversion (TRUE=Include computer accounts/FALSE=Skip computer accounts)
 
 
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
