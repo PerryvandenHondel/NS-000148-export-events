@@ -52,7 +52,17 @@ procedure ProgInit();
 begin
 	// Set the defaults for some variables.
 	
-	gbFlagConvert := true;
+	gbFlagConvert := StrToBool(ReadSettingKey('Settings', 'Convert'));
+	if gbFlagConvert = true then
+		WriteLn('Converion: ON')
+	else
+		WriteLn('Converion: OFF');
+	
+	gbFlagIncludeComputer := StrToBool(ReadSettingKey('Settings', 'IncludeComputer'));
+	if gbFlagIncludeComputer = true then
+		WriteLn('Include computer accounts: ON')
+	else
+		WriteLn('Include computer accounts: OFF');
 	
 	// Get the computer name of where this program is running.
 	gsComputerName := GetCurrentComputerName();
@@ -63,6 +73,8 @@ begin
 	// Display the program title text.
 	ProgTitle();
 
+	WriteLn();
+	
 	
 	// Dot not convert the LPR file to SKV.
 	//gbDoConvert := false;

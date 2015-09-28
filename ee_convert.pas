@@ -163,9 +163,10 @@ begin
 		else
 			ProcessLine(strLine);
 		
-		WriteLn('*** EventID=', FindHeaderPos('EventID'));
-		WriteLn('*** TimeGenerated=', FindHeaderPos('TimeGenerated'));
-		WriteLn('*** Whatever=', FindHeaderPos('Whatever'));
+		
+		//WriteLn('*** EventID=', FindHeaderPos('EventID'));
+		//WriteLn('*** TimeGenerated=', FindHeaderPos('TimeGenerated'));
+		//WriteLn('*** Whatever=', FindHeaderPos('Whatever'));
 		
 		
 		

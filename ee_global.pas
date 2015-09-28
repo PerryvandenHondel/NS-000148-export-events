@@ -29,7 +29,8 @@ const
 	DESCRIPTION =				'Export Events';
 	EXTENSION_LPR = 			'.lpr';
 	EXTENSION_SKV = 			'.skv';
-
+	CONF_NAME = 				'ee.conf';
+	
 var
 	gsComputerName: string;
 	gbFlagConvert: boolean;				// Flag to convert the LPR file to a SKV. (TRUE=Convert/FALSE=Do not convert)
@@ -39,9 +40,60 @@ var
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
 function GetLocalExportFolder(el: string): string;
 function GetPathExport(el: string; sDateTime: string): string;
-	
+function ReadSettingKey(section: string; key: string): string;
+
 
 implementation
+
+
+function ReadSettingKey(section: string; key: string): string;
+//
+//	Read a Key from a section from a config (.conf) file.
+//
+//	[Section]
+//	Key1=10
+//	Key2=Something
+//
+//	Usage:
+//		WriteLn(ReadSettingKey('Section', 'Key2'));  > returns 'Something'
+//		When not found, returns a empty string.
+//		
+//	Needs updates for checking, validating data.
+//
+var
+	conf: CTextFile;
+	inSection: boolean;
+	l: string; 
+	p: string;
+	r: string;
+	sectionName: string;
+begin
+	p := GetProgramFolder() + '\' + CONF_NAME;
+	conf := CTextFile.Create(p);
+	conf.OpenFileRead();
+
+	r := '';
+	sectionName := '['+ section + ']';
+	inSection := false;
+	repeat
+		l := conf.ReadFromFile();
+		//WriteLn(l);
+		
+		if Pos(sectionName, l) > 0 then
+			inSection := true;
+		
+		If (Pos(key, l) > 0) and (inSection = true) then
+		begin
+			//WriteLn('Found key ', key, ' found in section ', sectionName);
+			r := RightStr(l, Length(l) - Length(key + '='));
+			//WriteLn(r);
+		end; // of if 
+		
+	until conf.GetEof();
+	conf.CloseFile();
+	ReadSettingKey := r;
+end; // of function ReadSettingKey
+
 
 
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
