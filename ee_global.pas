@@ -61,11 +61,14 @@ function ReadSettingKey(section: string; key: string): string;
 //	Needs updates for checking, validating data.
 //
 var
-	r: string;
+	r: string;					// Return value of this function
 	sectionName: string;
 	inSection: boolean;
+	l: string;					// Line buffer
+	p: string;					// Path of the config file
+	conf: CTextFile;			// Class Text File 
 begin
-	p := GetProgramFolder() + '\readconf.conf';
+	p := GetProgramFolder() + '\' + CONF_NAME;
 	conf := CTextFile.Create(p);
 	conf.OpenFileRead();
 
