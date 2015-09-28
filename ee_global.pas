@@ -61,14 +61,11 @@ function ReadSettingKey(section: string; key: string): string;
 //	Needs updates for checking, validating data.
 //
 var
-	conf: CTextFile;
-	inSection: boolean;
-	l: string; 
-	p: string;
 	r: string;
 	sectionName: string;
+	inSection: boolean;
 begin
-	p := GetProgramFolder() + '\' + CONF_NAME;
+	p := GetProgramFolder() + '\readconf.conf';
 	conf := CTextFile.Create(p);
 	conf.OpenFileRead();
 
@@ -77,17 +74,25 @@ begin
 	inSection := false;
 	repeat
 		l := conf.ReadFromFile();
-		//WriteLn(l);
+		//WriteLn(inSection, #9, l);
 		
 		if Pos(sectionName, l) > 0 then
-			inSection := true;
-		
-		If (Pos(key, l) > 0) and (inSection = true) then
 		begin
-			//WriteLn('Found key ', key, ' found in section ', sectionName);
-			r := RightStr(l, Length(l) - Length(key + '='));
-			//WriteLn(r);
-		end; // of if 
+			//WriteLn('FOUND SECTION: ', sectionName);
+			inSection := true;
+		end;
+		
+		if inSection = true then
+		
+		begin
+			if (Pos(key, l) > 0) then
+			begin
+				//WriteLn('Found key ', key, ' found in section ', sectionName);
+				r := RightStr(l, Length(l) - Length(key + '='));
+				//WriteLn(r);
+				Break; // break the loop
+			end; // of if 
+		end; // of if inSection
 		
 	until conf.GetEof();
 	conf.CloseFile();

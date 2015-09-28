@@ -47,6 +47,14 @@ procedure ConvertLpr(pathLpr: string);
 implementation
 
 
+procedure ReadEventDefinitions()
+begin
+	
+
+end; // of procedure ReadEventDefinitions
+
+
+
 procedure ProcessHeader(l: Ansistring);
 //
 //	Process the header line of a file.
