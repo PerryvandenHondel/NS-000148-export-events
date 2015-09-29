@@ -308,30 +308,34 @@ end; // of function GetEventType
 
 
 procedure ProcessLineWithEvent(a: TStringArray);
+//
+// Only the lines that need to be converted are processed by this procedure.
+//
 var
 	x: integer;
 	buffer: Ansistring;
 	eventId: string;
 	keyName: string;
 	keyPos: integer;
+	keyValue: string;
 	IsString: boolean;
 begin
+	//WriteLn('ProcessLine() BEGIN=========================================================');
 	
-	WriteLn('ProcessLine() BEGIN=========================================================');
-	
-	WriteLn('LINE TO TSTRINGARRAY:');
+	{WriteLn('LINE TO TSTRINGARRAY:');
 	for x := 0 to high(a) do
 	begin
 		WriteLn('   ', x, ': ', a[x]);
 	end; // of for
-	
-	
+	}
 	// Build the buffer string to write to the export SKV file.
+	// Write the date and time to the buffer.
 	buffer := a[FindHeaderPos('TimeGenerated')] + ' ';
 	
 	// Add the Event type to the buffer.
 	buffer := buffer + GetEventType(StrToInt(a[FindHeaderPos('EventType')]));
 	
+	// Get the Event ID from the line. Use the label from the header to determine the position.
 	eventId := a[FindHeaderPos('EventID')];
 	buffer := buffer + ' eid=' + eventId;
 	
@@ -342,29 +346,38 @@ begin
 			keyName := eventDetailArray[x].keyName;
 			keyPos := eventDetailArray[x].position;
 			isString := eventDetailArray[x].IsString;
-			WriteLn('KEY:', keyName, '      POS:', keyPos, '       ISSTR:', isString);
+			//WriteLn('KEY:', keyName, '      POS:', keyPos, '       ISSTR:', isString);
 				
-			buffer := buffer + ' ' + keyName + '=';
-			if isString = true then
-				buffer := buffer + EncloseDoubleQuote(a[keyPos])	// STRING (isString=TRUE)
-			else
-				buffer := buffer + a[keyPos];						// NUMBER (isString= FALSE)
+			// Get the keyvalue from the line array
+			keyValue := a[keyPos];
+			if (RightStr(keyValue, 1) = '$') and (gbFlagIncludeComputer = false) then
+				exit;
+			
+			if Length(keyValue) > 0 then
+			begin
+				buffer := buffer + ' ' + keyName + '=';
+				if isString = true then
+					buffer := buffer + EncloseDoubleQuote(keyValue)	// STRING (isString=TRUE)
+				else
+					buffer := buffer + keyValue;						// NUMBER (isString= FALSE)
+			end; // of if
 		end; // of if
 	end; // of for
-	WriteLn('BUFFER: ', buffer);
-	WriteLn('ProcessLine() END=========================================================');
+	//WriteLn('BUFFER: ', buffer);
+	skv.WriteToFile(buffer);
+	//WriteLn('ProcessLine() END=========================================================');
 end;
 
 
 procedure CheckForLineProcessing(l: Ansistring);
 //
-//	Process a line with event log data.
+//	Process a line with event log data that needs to be converted
 //
 var
 	a: TStringArray;
 	x: integer;
 begin
-	WriteLn('CheckForLineProcessing():');
+	//WriteLn('CheckForLineProcessing():');
 	
 	// Extract the parts to the line to a StringArray.
 	a := SplitString(l, LINE_SEPARATOR);
@@ -411,26 +424,19 @@ begin
 	repeat
 		strLine := lpr.ReadFromFile();
 		intCurrentLine := lpr.GetCurrentLine();
-		WriteLn(intCurrentLine, ': >> ', strLine);
+		// WriteLn(AlignRight(intCurrentLine, 6) + ': ', strLine);
+		WriteMod(intCurrentLine, STEP_MOD, 'lines'); // In USupport Library, write every STEP_MOD a line to the screen.
 		if intCurrentLine = 1 then
 			// When the current line = 1 it's the header, get the position of the labels. 
-			// Fill headerPosArray
 			ProcessHeader(strLine)
 		else
+			// intCurrentLine <> 1
 			CheckForLineProcessing(strLine);
-		
-		
-		//WriteLn('*** EventID=', FindHeaderPos('EventID'));
-		//WriteLn('*** TimeGenerated=', FindHeaderPos('TimeGenerated'));
-		//WriteLn('*** Whatever=', FindHeaderPos('Whatever'));
-		
-		
-		
-		//ProcessLine(intCurrentLine, strLine);
-		//WriteLn(intCurrentLine, '|', strLine);
-			
-		//WriteMod(intCurrentLine, STEP_MOD); // In USupport Library
 	until lpr.GetEof();
+	WriteLn;
+	
+	WriteLn('A total of ', intCurrentLine, ' lines are converted.');
+	
 	lpr.CloseFile();
 	
 	skv.CloseFile();

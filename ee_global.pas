@@ -30,11 +30,13 @@ const
 	EXTENSION_LPR = 			'.lpr';
 	EXTENSION_SKV = 			'.skv';
 	CONF_NAME = 				'ee.conf';
+	STEP_MOD =					157;			// Step modulator for echo mod, use a off-number, not rounded as 10, 15, 100, 250 etc. to see the changes.
 	
 var
 	gsComputerName: string;
 	gbFlagConvert: boolean;				// Flag to convert the LPR file to a SKV. (TRUE=Convert/FALSE=Do not convert)
 	gbFlagIncludeComputer: boolean;		// Flag to include or exclude the computer accounts in the conversion (TRUE=Include computer accounts/FALSE=Skip computer accounts)
+	gbFlagVerboseMode: boolean;			// Flag to set program in verbose mode, show all output to the screen.
 
 
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;

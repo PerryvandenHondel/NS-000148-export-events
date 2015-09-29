@@ -54,15 +54,21 @@ begin
 	
 	gbFlagConvert := StrToBool(ReadSettingKey('Settings', 'Convert'));
 	if gbFlagConvert = true then
-		WriteLn('Converion: ON')
+		WriteLn('Converion to SKF: ON')
 	else
-		WriteLn('Converion: OFF');
+		WriteLn('Converion to SKF: OFF');
 	
 	gbFlagIncludeComputer := StrToBool(ReadSettingKey('Settings', 'IncludeComputer'));
 	if gbFlagIncludeComputer = true then
 		WriteLn('Include computer accounts: ON')
 	else
 		WriteLn('Include computer accounts: OFF');
+	
+	gbFlagVerboseMode := StrToBool(ReadSettingKey('Settings', 'VerboseMode'));
+	if gbFlagVerboseMode = true then
+		WriteLn('Verbose Mode: ON')
+	else
+		WriteLn('Verbose Mode: OFF');
 	
 	// Get the computer name of where this program is running.
 	gsComputerName := GetCurrentComputerName();
@@ -150,7 +156,8 @@ begin
 	//WriteLn(ProcessThisEvent(4000));
 	//WriteLn(ProcessThisEvent(4624));
 		
-	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
+	//pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
+	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\NS00DC011\Security\NS00DC011-Sec-20150925090651-ovVzvmHl.lpr';
 	ConvertLpr(pathLpr);
 
 
