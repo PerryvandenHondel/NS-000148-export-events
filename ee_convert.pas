@@ -46,18 +46,19 @@ type
 	TEventDetailRecord = record
 		eventId: integer;				// eventId
 		keyName: string;				// KeyName in Splunk
-		Position: integer;				// Position in the export file.
-		IsString: boolean;				// Type of field, TRUE=String/FALSE=Number
-		Description: string;			// Description of keyName
+		position: integer;				// Position in the export file.
+		isString: boolean;				// Type of field, TRUE=String/FALSE=Number
+		description: string;			// Description of keyName
 	end; // of record
 	TEventDetailArray = array of TEventDetailRecord;
+
 
 var
 	lpr: CTextFile;
 	skv: CTextFile;
 	headerPosArray: THeaderPosArray;
 	eventArray: TEventArray;
-	eventDetailArray: TEventDetailArray
+	eventDetailArray: TEventDetailArray;
 
 
 procedure ReadEventDefinitions();
@@ -90,30 +91,54 @@ procedure EventDetailRecordAdd(newEventId: integer; newKeyName: string; newPosit
 //
 //	Add a new record to the array of Event Details
 //
-//	newEventId
-//	newKeyName
-//	newPosition
-//	newIsString
-//	newDesc
+//	newEventId			Event ID: 9999
+//	newKeyName			Name of key in Splunk
+//	newPosition			Position of the value in the export LPR file.
+//	newIsString			Boolean for IsString (TRUE=String/FALSE=Number); determines enclosure with double quotes
+//	newDesc				Descripion
 //
 var
 	size: integer;
 begin
 	size := Length(eventDetailArray);
+	SetLength(eventDetailArray, size + 1);
+	eventDetailArray[size].eventId := newEventId;
+	eventDetailArray[size].keyName := newKeyName;
+	eventDetailArray[size].position := newPosition;
+	eventDetailArray[size].isString := newIsString;
+	eventDetailArray[size].description := newDesc;
 end; // of procedure EventDetailRecordAdd
 
 
 procedure EventRecordShow();
 var
 	i: integer;
+	j: integer;
+	t: Ansistring;
 begin
 	WriteLn();
-	WriteLn('Events to process:');
-
+	WriteLn('EVENTS TO PROCESS');
+	WriteLn('=================');
 	for i := 0 to High(eventArray) do
 	begin
 		//Writeln(IntToStr(i) + Chr(9) + ' ' + IntToStr(EventArray[i].eventId) + Chr(9), EventArray[i].isActive, Chr(9) + IntToStr(EventArray[i].osVersion) + Chr(9) + EventArray[i].description);
 		Writeln(AlignRight(i, 6) + AlignRight(eventArray[i].eventId, 6) + '  ' + eventArray[i].description);
+		
+		for j := 0 to High(eventDetailArray) do
+		begin
+			if eventDetailArray[j].eventId = eventArray[i].eventId then
+			begin
+				t := '      ';
+				t := t + AlignRight(j, 6);                                                      // Number of line
+				t := t + ' ' + AlignRight(eventDetailArray[j].eventId, 6);                      // Number of event id
+				t := t + ' ' + AlignLeft(eventDetailArray[j].keyName, 10);                      // Splunk Key Name
+				t := t + ' ' + AlignRight(eventDetailArray[j].position, 3);                     // Position in the export file
+				t := t + ' ' + AlignLeft(BoolToStr(eventDetailArray[j].IsString), 5);           // Boolean of type (TRUE=String/FALSE=Number)
+				t := t + ' ' + AlignLeft(eventDetailArray[j].description, 50);                  // Descripion of field.
+				WriteLn(t);
+			end;
+		end;
+		
 	end;
 end; // of procedure EventRecordShow	
 
@@ -121,16 +146,21 @@ end; // of procedure EventRecordShow
 procedure ReadEventDefinitions();
 var
 	a: TStringArray;
+	aFields: TStringArray;
 	eventDescription: string;
 	eventId: integer;
 	exportEvents: string;
+	numberOfFields: integer;
 	x: integer;
 	y: integer;
-	foundField: boolean;
-	fieldName: string;
-	fieldPos: integer;
-	fieldIsString: boolean;
-	fieldDesc: string;
+	fieldValue: string;
+	//j: integer;
+	//z: integer;
+	//foundField: boolean;
+	//fields: string;
+	//fieldPos: integer;
+	//fieldIsString: boolean;
+	//fieldDesc: string;
 begin
 	SetLength(a, 0);
 	exportEvents := ReadSettingKey('Settings', 'ExportEvents');
@@ -138,45 +168,25 @@ begin
 	a := SplitString(exportEvents, ',');
 	for x := 0 to high(a) do
 	begin
-		WriteLn(x, '>', a[x]);
+		//WriteLn(x, '>', a[x]);
 		
 		eventId := StrToInt(ReadSettingKey(a[x], 'Id'));
 		eventDescription := ReadSettingKey(a[x], 'Description');
-		
-		WriteLn(eventId);
-		WriteLn(eventDescription);
+		numberOfFields := StrToInt(ReadSettingKey(a[x], 'NumberOfFields'));
 		
 		EventRecordAdd(eventId, eventDescription);
 		
-		y := 0;
-		foundField := true;
-		repeat
-			Inc(y);
-			fieldName := ReadSettingKey(IntToStr(eventId), 'Field-' + IntToStr(y) + '-Name');
-			if Length(fieldName) = 0 then
-				// We haven't found a line with Field-x-Name anymore.
-				// All Event details have been found!
-				foundField := false
-			else
-			begin
-			
-				fieldPos := StrToInt(ReadSettingKey(IntToStr(eventId), 'Field-' + IntToStr(y) + '-Pos'));
-				fieldIsString := StrToBool(ReadSettingKey(IntToStr(eventId), 'Field-' + IntToStr(y) + '-IsString'));
-				fieldDesc := ReadSettingKey(IntToStr(eventId), 'Field-' + IntToStr(y) + '-Description');
-				
-				WriteLn('ITEM: ', y);
-				WriteLn('fieldName: ', fieldName);
-				WriteLn('fieldPos: ', fieldPos);
-				WriteLn('fieldIsString: ', fieldIsString);
-				WriteLn('fieldDesc: ', fieldDesc);
-			end;
-		until foundField = false;
-		
-		
+		for y := 1 to numberOfFields do
+		begin
+			// Find the keys in the config with name FieldX.
+			fieldValue := ReadSettingKey(IntToStr(eventId), 'Field' + IntToStr(y));
+			// Split the string into an array of strings.
+			aFields := SplitString(fieldValue, ';');
+			// Add a new record to the EventDetailArray with the values from the line above.
+			EventDetailRecordAdd(eventId, aFields[0], StrToInt(aFields[1]), StrToBool(aFields[2]), aFields[3]);
+		end; // of for
 	end // of for
-
 end; // of procedure ReadEventDefinitions
-
 
 
 procedure ProcessHeader(l: Ansistring);

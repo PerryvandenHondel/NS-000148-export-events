@@ -34,7 +34,7 @@ uses
 var
 	gsPathPid: string;				// Path of the PID (Process ID) file.
 
-	
+
 procedure ProgTitle();
 begin
 	WriteLn();
@@ -147,11 +147,12 @@ begin
 	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
 	
 	//ConvertLpr(pathLpr);
-	
-	
+
 	ReadEventDefinitions();
-	
 	EventRecordShow();
+	
+		
+
 	
 	
 end; // of procedure ProgTest
