@@ -61,8 +61,9 @@ var
 	eventDetailArray: TEventDetailArray;
 
 
+function ProcessThisEvent(e: integer): boolean;
 procedure ReadEventDefinitions();
-procedure EventRecordShow();
+procedure EventAndEventDetailsShow();
 procedure ConvertLpr(pathLpr: string);
 
 	
@@ -110,7 +111,10 @@ begin
 end; // of procedure EventDetailRecordAdd
 
 
-procedure EventRecordShow();
+procedure EventAndEventDetailsShow();
+//
+//	Show the Events and Events Details.
+//
 var
 	i: integer;
 	j: integer;
@@ -140,7 +144,7 @@ begin
 		end;
 		
 	end;
-end; // of procedure EventRecordShow	
+end; // of procedure EventAndEventDetailsShow	
 
 
 procedure ReadEventDefinitions();
@@ -154,13 +158,6 @@ var
 	x: integer;
 	y: integer;
 	fieldValue: string;
-	//j: integer;
-	//z: integer;
-	//foundField: boolean;
-	//fields: string;
-	//fieldPos: integer;
-	//fieldIsString: boolean;
-	//fieldDesc: string;
 begin
 	SetLength(a, 0);
 	exportEvents := ReadSettingKey('Settings', 'ExportEvents');
@@ -187,6 +184,43 @@ begin
 		end; // of for
 	end // of for
 end; // of procedure ReadEventDefinitions
+
+
+
+function ProcessThisEvent(e: integer): boolean;
+{
+	Read the events from the EventArray.
+	Return the status for isActive.
+	
+	Returns
+		TRUE		Process this event.
+		FALSE		Do not process this event.
+}
+var
+	i: integer;
+	r: boolean;
+begin
+	r := false;
+	
+	//WriteLn;
+	//WriteLn('ProcessThisEvent(): e=', e);
+	for i := 0 to High(EventArray) do
+	begin
+		//WriteLn(i, chr(9), EventArray[i].eventId, Chr(9), EventArray[i].isActive);
+		if eventArray[i].eventId = e then
+		begin
+			r := true;
+			//WriteLn('FOUND ', e, ' ON POS ', i);
+			break;
+			// Found the event e in the array, return the isActive state
+			//r := EventArray[i].isActive;
+			//break;
+		end;
+	end;
+	//WriteLn('ShouldEventBeProcessed():', Chr(9), e, Chr(9), r);
+	ProcessThisEvent := r;
+end;
+
 
 
 procedure ProcessHeader(l: Ansistring);
@@ -243,8 +277,86 @@ begin
 end; // of function FindHeaderPos
 
 
+function GetEventType(eventType: integer): string;
+//
+//	Returns the Event Type string for a EventType
+//
+//	1		ERROR
+//	2		WARNING
+//	3		INFO
+//	4		SUCCESS	AUDIT
+//	5		FAILURE AUDIT
+//	
+//	Source: https://msdn.microsoft.com/en-us/library/aa394226%28v=vs.85%29.aspx
+//	
+var
+	r: string;
+begin
+	r := '';
+	
+	case eventType of
+		1: r := 'ERR';	// Error
+		2: r := 'WRN';	// Warning
+		4: r := 'INF';	// Information
+		8: r := 'AUS';	// Audit Success
+		16: r := 'AUF';	// Audit Failure
+	else
+		r := 'UKN';		// Unknown, note: should never be returned.
+	end;
+	GetEventType := r;
+end; // of function GetEventType
 
-procedure ProcessLine(l: Ansistring);
+
+procedure ProcessLineWithEvent(a: TStringArray);
+var
+	x: integer;
+	buffer: Ansistring;
+	eventId: string;
+	keyName: string;
+	keyPos: integer;
+	IsString: boolean;
+begin
+	
+	WriteLn('ProcessLine() BEGIN=========================================================');
+	
+	WriteLn('LINE TO TSTRINGARRAY:');
+	for x := 0 to high(a) do
+	begin
+		WriteLn('   ', x, ': ', a[x]);
+	end; // of for
+	
+	
+	// Build the buffer string to write to the export SKV file.
+	buffer := a[FindHeaderPos('TimeGenerated')] + ' ';
+	
+	// Add the Event type to the buffer.
+	buffer := buffer + GetEventType(StrToInt(a[FindHeaderPos('EventType')]));
+	
+	eventId := a[FindHeaderPos('EventID')];
+	buffer := buffer + ' eid=' + eventId;
+	
+	for x := 0 to High(eventDetailArray) do
+	begin
+		if eventDetailArray[x].eventId = StrToInt(eventId) then
+		begin
+			keyName := eventDetailArray[x].keyName;
+			keyPos := eventDetailArray[x].position;
+			isString := eventDetailArray[x].IsString;
+			WriteLn('KEY:', keyName, '      POS:', keyPos, '       ISSTR:', isString);
+				
+			buffer := buffer + ' ' + keyName + '=';
+			if isString = true then
+				buffer := buffer + EncloseDoubleQuote(a[keyPos])	// STRING (isString=TRUE)
+			else
+				buffer := buffer + a[keyPos];						// NUMBER (isString= FALSE)
+		end; // of if
+	end; // of for
+	WriteLn('BUFFER: ', buffer);
+	WriteLn('ProcessLine() END=========================================================');
+end;
+
+
+procedure CheckForLineProcessing(l: Ansistring);
 //
 //	Process a line with event log data.
 //
@@ -252,15 +364,17 @@ var
 	a: TStringArray;
 	x: integer;
 begin
-	WriteLn('ProcessLine():');
+	WriteLn('CheckForLineProcessing():');
 	
+	// Extract the parts to the line to a StringArray.
 	a := SplitString(l, LINE_SEPARATOR);
 	for x := 0 to high(a) do
 	begin
-		WriteLn(x, ':', a[x]);
+		if (x = FindHeaderPos('EventID')) and (ProcessThisEvent(StrToInt(a[x])) = true) then
+			//WriteLn('*** PROCESS THIS EVENT: ', a[x], ' ***');
+			ProcessLineWithEvent(a);
 	end; // of for
 end;
-
 
 
 procedure ConvertLpr(pathLpr: string);
@@ -303,7 +417,7 @@ begin
 			// Fill headerPosArray
 			ProcessHeader(strLine)
 		else
-			ProcessLine(strLine);
+			CheckForLineProcessing(strLine);
 		
 		
 		//WriteLn('*** EventID=', FindHeaderPos('EventID'));

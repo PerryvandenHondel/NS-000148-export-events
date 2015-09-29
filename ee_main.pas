@@ -144,14 +144,15 @@ procedure ProgTest();
 var
 	pathLpr: string;
 begin
-	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
-	
-	//ConvertLpr(pathLpr);
-
 	ReadEventDefinitions();
-	EventRecordShow();
+	EventAndEventDetailsShow();
 	
+	//WriteLn(ProcessThisEvent(4000));
+	//WriteLn(ProcessThisEvent(4624));
 		
+	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
+	ConvertLpr(pathLpr);
+
 
 	
 	
