@@ -64,7 +64,7 @@ var
 function ProcessThisEvent(e: integer): boolean;
 procedure ReadEventDefinitions();
 procedure EventAndEventDetailsShow();
-procedure ConvertLpr(pathLpr: string);
+procedure ConvertLpr(pathLpr: string; pathSkv: string);
 
 	
 implementation
@@ -160,9 +160,9 @@ var
 	fieldValue: string;
 begin
 	SetLength(a, 0);
-	exportEvents := ReadSettingKey('Settings', 'ExportEvents');
+	exportEvents := ReadSettingKey('Settings', 'ConvertEvents');
 	
-	a := SplitString(exportEvents, ',');
+	a := SplitString(exportEvents, ';');
 	for x := 0 to high(a) do
 	begin
 		//WriteLn(x, '>', a[x]);
@@ -239,7 +239,7 @@ begin
 	a := SplitString(l, LINE_SEPARATOR);
 	for x := 0 to High(a) do
 	begin 
-		WriteLn(x, ': ', a[x]);
+		//WriteLn(x, ': ', a[x]);
 		
 		sizeArray := Length(headerPosArray);
 		SetLength(headerPosArray, sizeArray + 1);
@@ -343,6 +343,7 @@ begin
 	begin
 		if eventDetailArray[x].eventId = StrToInt(eventId) then
 		begin
+			Inc(giConvertedEvents);
 			keyName := eventDetailArray[x].keyName;
 			keyPos := eventDetailArray[x].position;
 			isString := eventDetailArray[x].IsString;
@@ -390,13 +391,14 @@ begin
 end;
 
 
-procedure ConvertLpr(pathLpr: string);
+procedure ConvertLpr(pathLpr: string; pathSkv: string);
 var
 	strLine: Ansistring;
 	intCurrentLine: integer;
-	pathSkv: string;
 begin
-	WriteLn('ConvertLpr(): ', pathLpr);
+	WriteLn('ConvertLpr()');
+	WriteLn('  file: ', pathLpr);
+	WriteLn('    to: ', pathSkv);
 	
 	if GetFileSizeInBytes(pathLpr) = 0 then
 	begin
@@ -404,15 +406,10 @@ begin
 		Exit;
 	end; // of if 
 		
-	
-	// Build the path of the SKV file. Change extension.
-	pathSkv := StringReplace(pathLpr, EXTENSION_LPR, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
-	WriteLn(' - convert to SKV (pathSkv): ' + pathSkv);
-	
 	// Delete any existing output Splunk SKV file.
 	if FileExists(pathSkv) = true then
 	begin
-		//WriteLn('WARNING: File ' + pathSplunk + ' found, deleted it.');
+		// File .skv already exists, delete it. Result from previous conversion.
 		DeleteFile(pathSkv);
 	end;
 	
@@ -435,7 +432,7 @@ begin
 	until lpr.GetEof();
 	WriteLn;
 	
-	WriteLn('A total of ', intCurrentLine, ' lines are converted.');
+	WriteLn('A total of ', intCurrentLine, ' lines are processed.');
 	
 	lpr.CloseFile();
 	
@@ -443,10 +440,7 @@ begin
 end; // of procedure ConvertLpr
 
 
-end.
-
-
-// end of unit ee_convert
+end. // of unit ee_convert
 
 
 

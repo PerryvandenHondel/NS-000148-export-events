@@ -10,6 +10,10 @@
 //		procedure ProgRun();
 //		procedure ProgTitle();
 //
+// 
+// folderLpr=\\10.4.222.20\000134-LPR
+// folderSkv=\\10.4.222.20\000134-SKV
+
 
 
 program ee_main;
@@ -27,6 +31,7 @@ uses
 	ee_global,
 	ee_export,
 	ee_convert,
+	ee_transfer,
 	USupportLibrary,
 	UTextFile;
 
@@ -47,16 +52,14 @@ end; // of procedure ProgramTitle()
 	
 
 procedure ProgInit();
-//var
-//	i: integer;
 begin
 	// Set the defaults for some variables.
 	
 	gbFlagConvert := StrToBool(ReadSettingKey('Settings', 'Convert'));
 	if gbFlagConvert = true then
-		WriteLn('Converion to SKF: ON')
+		WriteLn('Conversion to SKF: ON')
 	else
-		WriteLn('Converion to SKF: OFF');
+		WriteLn('Conversion to SKF: OFF');
 	
 	gbFlagIncludeComputer := StrToBool(ReadSettingKey('Settings', 'IncludeComputer'));
 	if gbFlagIncludeComputer = true then
@@ -73,6 +76,8 @@ begin
 	// Get the computer name of where this program is running.
 	gsComputerName := GetCurrentComputerName();
 	
+	giConvertedEvents := 0;
+	
 	// Create a PID (Process ID) file for the run of this program.
 	gsPathPid := GetPathOfPidFile();
 	
@@ -80,50 +85,21 @@ begin
 	ProgTitle();
 
 	WriteLn();
-	
-	
-	// Dot not convert the LPR file to SKV.
-	//gbDoConvert := false;
-	
-	//blnSkipComputerAccount := true;
-	//blnDebug := false;
-	
-	// Initialize the Event count array.
-	//SetLength(EventFound, 1);
-	{
-	if ParamCount > 0 then
-	begin
-		for i := 1 to ParamCount do
-		begin
-			//Writeln(i, ': ', ParamStr(i));
-			
-			case LowerCase(ParamStr(i)) of
-				'--convert':
-					begin
-						gbDoConvert := true;
-						WriteLn('Option selected to convert the output to Splunk Key-Values (SKV) layout format');
-					end;
-				'--include-computer-accounts':
-					begin
-						blnSkipComputerAccount := false;
-						WriteLn('Option selected to include computer accounts in the Splunk conversion.');
-					end;
-				'--help', '-h', '-?':
-					begin
-						ProgramUsage();
-						ProgDone()
-					end;
-			end; // of case
-		end; // of for
-	end;
-	}
 end; // of procedure ProgInit()
 
 
-
 procedure ProgRun();
+//
+//	Main program run 
+//
 var
+	e: integer;
+	folderDestLpr: string;
+	folderDestSkv: string;
 	pathLpr: string;
+	pathSkv: string;
+	shareLpr: string;
+	shareSkv: string;
 	sizeLpr: integer;
 begin
 	//sEventLog := 'Security';
@@ -136,19 +112,55 @@ begin
 		
 		if gbFlagConvert = true then
 		begin
-			ConvertLpr(pathLpr);
+			// Conversion is needed 
+			
+			// Read the definitions from the .conf file.
+			ReadEventDefinitions();
+			EventAndEventDetailsShow();
+			
+			// Build the path of the SKV export file.
+			pathSkv := StringReplace(pathLpr, EXTENSION_LPR, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
+			
+			// Convert the file LPR to SKV
+			ConvertLpr(pathLpr, pathSkv);
+			
+			// Read the share of where the converted SKV file needs to be move to.
+			shareSkv := ReadSettingKey('Settings', 'ShareSkv');
+	
+			folderDestSkv := FixFolderAdd(shareSkv) + GetDateFs(true) + '\' + GetCurrentComputerName();
+			e := RobocopyMove(pathSkv, folderDestSkv);
+			if e > 15 then
+				WriteLn('ERROR ', e, ' during moving of file ', pathSkv, ' to ', folderDestSkv)
+			else
+				WriteLn('Successfully moved ', pathSkv);
 		end; // of if
-	end;
+		
+		// move the LPR file to the share.
+		shareLpr := ReadSettingKey('Settings', 'ShareLpr');
 	
-	
-	//ExportEventLog('System');
-	//ExportEventLog('Application');
+		folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetCurrentComputerName();
+		e := RobocopyMove(pathLpr, folderDestLpr);
+		if e > 15 then
+			WriteLn('ERROR ', e, ' during moving of file ', pathLpr, ' to ', folderDestLpr)
+		else
+			WriteLn('Successfully moved ', pathLpr);
+	end
+	else
+	begin
+		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
+	end; // of if
 end; // of procedure ProgRun
 
-
+{
 procedure ProgTest();
 var
 	pathLpr: string;
+	pathSkv: string;
+	shareLpr: string;
+	folderDestLpr: string;
+	folderDestSkv: string;
+	shareSkv: string;
+	e: integer;
 begin
 	ReadEventDefinitions();
 	EventAndEventDetailsShow();
@@ -157,19 +169,33 @@ begin
 	//WriteLn(ProcessThisEvent(4624));
 		
 	//pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\VM60DC002\Security\VM60DC002-Sec-20150925104604-YrjbpKAp.lpr';
-	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\NS00DC011\Security\NS00DC011-Sec-20150925090651-ovVzvmHl.lpr';
-	ConvertLpr(pathLpr);
-
-
+	pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\NS00DC011\Security\NS00DC011-Sec-20150930103723-PXoGgssK.lpr';
+	pathSkv := 'R:\GitRepos\NS-000148-export-events\bin\NS00DC011\Security\NS00DC011-Sec-20150930103723-PXoGgssK.skv';
+	ConvertLpr(pathLpr, pathSkv);
+	//pathLpr := 'R:\GitRepos\NS-000148-export-events\bin\NS00DC011\Security\NS00DC011-Sec-20150925082158-RuV8HgF3.lpr';
+	// Read the LPR share from the config file.
+	shareLpr := ReadSettingKey('Settings', 'ShareLpr');
 	
-	
+	folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetCurrentComputerName();
+	e := RobocopyMove(pathLpr, folderDestLpr);
+	if e > 15 then
+		WriteLn('ERROR ', e, ' during moving of file ', pathLpr, ' to ', folderDestLpr)
+	else
+		WriteLn('Succesfully moved ', pathLpr);
 end; // of procedure ProgTest
+}
 
 
 procedure ProgDone();
 begin
+	WriteLn('Converted ', giConvertedEvents, ' events');
+	
 	// Delete the Process ID file.
 	DeleteFile(gsPathPid);
+	
+	//WriteLn('Waiting until a key is pressed');
+	//repeat
+	//until KeyPressed;
 	
 	Halt(0);
 end; // of procedure ProgDone()
@@ -178,7 +204,7 @@ end; // of procedure ProgDone()
 
 begin
 	ProgInit();
-	//ProgRun();
-	ProgTest();
+	ProgRun();
+	//ProgTest();
 	ProgDone();
 end. // of program ExportEvents

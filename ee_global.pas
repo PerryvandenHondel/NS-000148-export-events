@@ -37,6 +37,7 @@ var
 	gbFlagConvert: boolean;				// Flag to convert the LPR file to a SKV. (TRUE=Convert/FALSE=Do not convert)
 	gbFlagIncludeComputer: boolean;		// Flag to include or exclude the computer accounts in the conversion (TRUE=Include computer accounts/FALSE=Skip computer accounts)
 	gbFlagVerboseMode: boolean;			// Flag to set program in verbose mode, show all output to the screen.
+	giConvertedEvents: integer;			// Number of events converted.
 
 
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
@@ -133,7 +134,9 @@ var
 	r: string;
 begin
 	// Build the path
-	r := GetProgramFolder() + '\' + gsComputerName + '\'  + el;
+	//r := GetProgramFolder() + '\' + gsComputerName + '\'  + el;
+	r := GetProgramFolder();
+	
 	
 	// Make the folder as a sub folder.
 	GetLocalExportFolder := r;
@@ -160,7 +163,8 @@ begin
 	fn := fn + LeftStr(el, 3) + '-';
 	fn := fn + ConvertProperDateTimeToDateTimeFs(sDateTime) + '-';
 	fn := fn + GetRandomString(8);
-	GetPathExport := GetLocalExportFolder(el) + '\' + fn;
+	//GetPathExport := GetLocalExportFolder(el) + '\' + fn;
+	GetPathExport := GetProgramFolder() + '\' + fn;
 end; // of function GetPathExport
 
 
