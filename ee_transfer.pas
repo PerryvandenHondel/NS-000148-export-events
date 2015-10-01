@@ -61,7 +61,7 @@ begin
 		c := 'robocopy.exe ' + EncloseDoubleQuote(sFolderSource) + ' ' + EncloseDoubleQuote(sFolderDest) + ' ' + EncloseDoubleQuote(sFilename) + ' /mov';
 	
 		WriteLn;
-		WriteLn('Command:');
+		WriteLn('Running command:');
 		WriteLn(c);
 		WriteLn;
 		
@@ -69,7 +69,8 @@ begin
 		p := TProcess.Create(nil);
 		p.Executable := 'cmd.exe'; 
 		p.Parameters.Add('/c ' + c);
-		p.Options := [poWaitOnExit];
+		//p.Options := [poWaitOnExit];
+		p.Options := [poWaitOnExit, poNoConsole]; // Branch: test
 		//p.Options := [poWaitOnExit, poUsePipes];
 	
 		// Run the sub process.
@@ -77,6 +78,7 @@ begin
 	
 		// Get the return code from the process.
 		r := p.ExitStatus;
+		WriteLn('Returned error level code: ', r);
 	end
 	else
 	begin
