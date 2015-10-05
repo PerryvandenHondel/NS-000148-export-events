@@ -127,7 +127,8 @@ begin
 			// Read the share of where the converted SKV file needs to be move to.
 			shareSkv := ReadSettingKey('Settings', 'ShareSkv');
 	
-			folderDestSkv := FixFolderAdd(shareSkv) + GetDateFs(true) + '\' + GetCurrentComputerName();
+			// Issue2: Add NT Domain to export path
+			folderDestSkv := FixFolderAdd(shareSkv) + GetDateFs(true) + '\' + GetNetbiosDomain() + '\' + GetCurrentComputerName();
 			e := RobocopyMove(pathSkv, folderDestSkv);
 			if e > 15 then
 				WriteLn('ERROR ', e, ' during moving of file ', pathSkv, ' to ', folderDestSkv)
@@ -138,7 +139,8 @@ begin
 		// move the LPR file to the share.
 		shareLpr := ReadSettingKey('Settings', 'ShareLpr');
 	
-		folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetCurrentComputerName();
+		// Issue2: Add NT Domain to export path
+		folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetNetbiosDomain() + '\' + GetCurrentComputerName();
 		e := RobocopyMove(pathLpr, folderDestLpr);
 		if e > 15 then
 			WriteLn('ERROR ', e, ' during moving of file ', pathLpr, ' to ', folderDestLpr)
