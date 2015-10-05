@@ -137,7 +137,7 @@ begin
 	c := c + '"SELECT TimeGenerated,EventLog,ComputerName,EventId,EventType,REPLACE_STR(Strings,''\u000d\u000a'',''|'') AS Strings ';
 	c := c + 'FROM '+ sEventLog + ' ';
 	// Issue1 fix: https://github.com/PerryvandenHondel/NS-148-export-events/issues/1
-	c := c + 'WHERE TimeGenerated=>''' + sDateTimeLast + ''' AND TimeGenerated<''' + sDateTimeNow + '''" ';
+	c := c + 'WHERE TimeGenerated>=''' + sDateTimeLast + ''' AND TimeGenerated<''' + sDateTimeNow + '''" ';
 	c := c + '-stats:OFF -oSeparator:"|" ';
 	c := c + '>' + sPathLpr;
 	
