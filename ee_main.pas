@@ -149,7 +149,9 @@ begin
 	end
 	else
 	begin
-		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
+		// Delete the file when it is empty. Issue3
+		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, delete it.');		
+		DeleteFile(pathLpr);
 	end; // of if
 end; // of procedure ProgRun
 
