@@ -8,4 +8,4 @@ fpc.exe ee_main.pas -b -oee.exe
 del *.o
 del *.ppu
 
-copy ee.exe ..\bin\ee.exe
+move ee.exe ..\bin\ee.exe

@@ -112,14 +112,15 @@ function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
 //
 // Convert a proper date time to a date time to be used as a file name (File System).
 //
-// Converted:	YYYY-MM-DD HH:MM:SS  >> YYYYMMDDHHMMSS
+// Converted:	YYYY-MM-DD HH:MM:SS  >> YYYYMMDD-HHMMSS
 //
 var
 	r: string;
 begin
 	r := StringReplace(sDateTime, '-', '', [rfIgnoreCase, rfReplaceAll]);
 	r := StringReplace(r, ':', '', [rfIgnoreCase, rfReplaceAll]);
-	r := StringReplace(r, ' ', '', [rfIgnoreCase, rfReplaceAll]);
+	// Branch Issue4. Add a - between date and time. Improves readability
+	r := StringReplace(r, ' ', '-', [rfIgnoreCase, rfReplaceAll]); 
 	
 	ConvertProperDateTimeToDateTimeFs := r;
 end; // of function ConvertProperDateTimeToDateTimeFs

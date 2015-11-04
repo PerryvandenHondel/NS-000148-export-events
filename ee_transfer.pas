@@ -37,8 +37,8 @@ function RobocopyMove(const sPathSource: string; sFolderDest: string): integer;
 //		sPathSource			D:\folder\folder\file.ext
 //		sFolderDest			D:\foldernew
 //	
-//	Returns the errorlevel of robocopy execution
-//	An errorlevel > 15 is an error.
+//	Returns the error level of robocopy.exe execution
+//	An error level > 15 is an error.
 //
 var
 	p: TProcess;
@@ -46,19 +46,24 @@ var
 	sFilename: string;
 	sFolderSource: string;
 	r: integer;
+	extension: string; 			// Branch: Issue4
 begin
 	if FileExists(sPathSource) = true then
 	begin
 		sFilename := ExtractFileName(sPathSource);
 		sFolderSource := FixFolderRemove(ExtractFilePath(sPathSource));
 		sFolderDest := FixFolderRemove(sFolderDest);
+		extension := ExtractFileExt(sPathSource);
 
 		WriteLn('ROBOCOPYMOVE()');
 		WriteLn('  Moving file: ', sFilename);
 		WriteLn('  from folder: ', sFolderSource);
 		WriteLn('    to folder: ', sFolderDest);
+		WriteLn('    Extension: ', extension); // Issue4
 	
-		c := 'robocopy.exe ' + EncloseDoubleQuote(sFolderSource) + ' ' + EncloseDoubleQuote(sFolderDest) + ' ' + EncloseDoubleQuote(sFilename) + ' /mov';
+		//c := 'robocopy.exe ' + EncloseDoubleQuote(sFolderSource) + ' ' + EncloseDoubleQuote(sFolderDest) + ' ' + EncloseDoubleQuote(sFilename) + ' /mov';
+		// Branch: Issue4
+		c := 'robocopy.exe ' + EncloseDoubleQuote(sFolderSource) + ' ' + EncloseDoubleQuote(sFolderDest) + ' ' + EncloseDoubleQuote('*' + extension) + ' /mov /r:10 /w:10';
 	
 		WriteLn;
 		WriteLn('Running command:');
