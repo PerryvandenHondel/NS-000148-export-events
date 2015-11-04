@@ -55,6 +55,12 @@ procedure ProgInit();
 begin
 	// Set the defaults for some variables.
 	
+	flagTestmode := StrToBool(ReadSettingKey('Settings', 'Testmode'));
+	if flagTestmode = true then
+		WriteLn('Testmode: ON')
+	else
+		WriteLn('Testmode: OFF');
+	
 	gbFlagConvert := StrToBool(ReadSettingKey('Settings', 'Convert'));
 	if gbFlagConvert = true then
 		WriteLn('Conversion to SKF: ON')
@@ -103,8 +109,17 @@ var
 	sizeLpr: integer;
 begin
 	//sEventLog := 'Security';
-	pathLpr := ExportEventLog('Security');		// From unit ee_export
-	WriteLn('Export is done to: ', pathLpr);
+	if flagTestmode = false then
+	begin
+		// if flagTestmode = false
+		pathLpr := ExportEventLog('Security');		// From unit ee_export
+		WriteLn('Export is done to: ', pathLpr);
+	end 
+	else
+	begin
+		// if flagTestmode = true
+		pathLpr := ReadSettingKey('Settings', 'Testfile');
+	end; 
 	sizeLpr := GetFileSizeInBytes(pathLpr);
 	if sizeLpr > 0 then
 	begin
@@ -124,34 +139,36 @@ begin
 			// Convert the file LPR to SKV
 			ConvertLpr(pathLpr, pathSkv);
 			
-			// Read the share of where the converted SKV file needs to be move to.
-			shareSkv := ReadSettingKey('Settings', 'ShareSkv');
+			if flagTestmode = false then
+			begin
+				// Read the share of where the converted SKV file needs to be move to.
+				shareSkv := ReadSettingKey('Settings', 'ShareSkv');
 	
-			// Issue2: Add NT Domain to export path
-			folderDestSkv := FixFolderAdd(shareSkv) + GetDateFs(true) + '\' + GetNetbiosDomain() + '\' + GetCurrentComputerName();
-			e := RobocopyMove(pathSkv, folderDestSkv);
-			if e > 15 then
-				WriteLn('ERROR ', e, ' during moving of file ', pathSkv, ' to ', folderDestSkv)
-			else
-				WriteLn('Successfully moved ', pathSkv);
+				folderDestSkv := FixFolderAdd(shareSkv) + GetDateFs(true) + '\' + GetCurrentComputerName();
+				e := RobocopyMove(pathSkv, folderDestSkv);
+				if e > 15 then
+					WriteLn('ERROR ', e, ' during moving of file ', pathSkv, ' to ', folderDestSkv)
+				else
+					WriteLn('Successfully moved ', pathSkv);
+			end; // of if flagTestmode
 		end; // of if
 		
-		// move the LPR file to the share.
-		shareLpr := ReadSettingKey('Settings', 'ShareLpr');
+		if flagTestmode = false then
+		begin
+			// move the LPR file to the share.
+			shareLpr := ReadSettingKey('Settings', 'ShareLpr');
 	
-		// Issue2: Add NT Domain to export path
-		folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetNetbiosDomain() + '\' + GetCurrentComputerName();
-		e := RobocopyMove(pathLpr, folderDestLpr);
-		if e > 15 then
-			WriteLn('ERROR ', e, ' during moving of file ', pathLpr, ' to ', folderDestLpr)
-		else
-			WriteLn('Successfully moved ', pathLpr);
+			folderDestLpr := FixFolderAdd(shareLpr) + GetDateFs(true) + '\' + GetCurrentComputerName();
+			e := RobocopyMove(pathLpr, folderDestLpr);
+			if e > 15 then
+				WriteLn('ERROR ', e, ' during moving of file ', pathLpr, ' to ', folderDestLpr)
+			else
+				WriteLn('Successfully moved ', pathLpr);
+		end; // of if flagTestmode
 	end
 	else
 	begin
-		// Delete the file when it is empty. Issue3
-		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, delete it.');		
-		DeleteFile(pathLpr);
+		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
 	end; // of if
 end; // of procedure ProgRun
 

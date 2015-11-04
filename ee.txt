@@ -1,0 +1,48 @@
+
+
+ee.conf
+
+
+Settings:
+
+
+* = default
+
+
+Testmode
+	TRUE		Convert a single file specified under parameter Testfile
+	FALSE		Do no test a file conversion
+	
+	
+Testfile
+	Filename		File in the same folder as EE.EXE, combinate with Testmode
+	
+	
+Convert
+	TRUE*			Convert 
+	FALSE			Do not convert, only do the export using Logparser.exe
+	
+
+IncludeComputer
+	TRUE			Include computer accounts (NAME$)		
+	FALSE*			Exclude computer accounts (NAME$)
+	
+
+VerboseMode
+	TRUE			Show extra output information on the command line
+	FALSE*			Limit the output to the command line
+	
+	
+ConvertEvents
+	Numbers			All events to convert, separated by ; (Example: xxxx;xxxx;xxxx)
+	
+	
+ShareLpr
+	Share			Example \\10.4.222.20\000148-LPR
+	
+	
+ShareSkv
+	Share			Example \\10.4.222.20\000148-SKV
+	
+
+	

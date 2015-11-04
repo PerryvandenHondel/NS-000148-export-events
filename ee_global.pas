@@ -38,6 +38,7 @@ var
 	gbFlagIncludeComputer: boolean;		// Flag to include or exclude the computer accounts in the conversion (TRUE=Include computer accounts/FALSE=Skip computer accounts)
 	gbFlagVerboseMode: boolean;			// Flag to set program in verbose mode, show all output to the screen.
 	giConvertedEvents: integer;			// Number of events converted.
+	flagTestmode: boolean;				// For testing the program.
 
 
 function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
