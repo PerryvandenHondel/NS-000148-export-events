@@ -111,6 +111,7 @@ begin
 end; // of procedure EventRecordAdd
 
 
+
 procedure EventDetailRecordAdd(newEventId: integer; newKeyName: string; newPosition: integer; newIsString: boolean; newDesc: string);
 //
 //	Add a new record to the array of Event Details
@@ -132,6 +133,7 @@ begin
 	eventDetailArray[size].isString := newIsString;
 	eventDetailArray[size].description := newDesc;
 end; // of procedure EventDetailRecordAdd
+
 
 
 procedure EventAndEventDetailsShow();
@@ -168,6 +170,7 @@ begin
 		
 	end;
 end; // of procedure EventAndEventDetailsShow	
+
 
 
 procedure ReadEventDefinitions();
@@ -272,6 +275,7 @@ begin
 end;
 
 
+
 function FindHeaderPos(labSearch: string): integer;
 //
 //	Find the postion of a header label in the headerPosArray array
@@ -298,6 +302,7 @@ begin
 	
 	FindHeaderPos := r;
 end; // of function FindHeaderPos
+
 
 
 function GetEventType(eventType: integer): string;
@@ -328,6 +333,7 @@ begin
 	end;
 	GetEventType := r;
 end; // of function GetEventType
+
 
 
 procedure ProcessLineWithEvent(a: TStringArray);
@@ -391,6 +397,7 @@ begin
 	skv.WriteToFile(buffer);
 	//WriteLn('ProcessLine() END=========================================================');
 end;
+
 
 
 procedure CheckForLineProcessing(l: Ansistring);
@@ -501,6 +508,7 @@ begin
 end; // of function GetLocalExportFolder
 
 
+
 function GetPathExport(el: string; sDateTime: string): string;
 //
 //	Return a path to an export file in format, parts:
@@ -541,6 +549,7 @@ begin
 end; // of function GetPathLastRun
 
 
+
 function LastRunGet(sEventLog: string): string;
 //
 //	Returns the date and time in proper format YYYY-MM-DD HH:MM:SS back from a file in variable sPath
@@ -579,6 +588,7 @@ begin
 end;
 
 
+
 function LastRunPut(sEventLog: string): string;
 //
 //	Put the current date time using Now() in the file sPath.
@@ -605,6 +615,7 @@ begin
 	end;
 	LastRunPut := r;
 end; // of function LastRunPut.
+
 
 
 function RunLogparser(sPathLpr: string; sEventLog: string; sDateTimeLast: string; sDateTimeNow: string): integer;
@@ -658,6 +669,7 @@ begin
 end; // of procedure RunLogparser
 
 
+
 function ExportEventLog(el: string) : string;
 //
 //	Export Event logs
@@ -703,8 +715,53 @@ begin
 	ExportEventLog := r;
 end; // procedure ExportEventLog
 
+
+
+procedure Add2TotalLog(pathTotal: Ansistring; pathAdd: Ansistring);
+//
+//	Attach the contents of text file pathAdd to the end of pathTotal.
+//
+var	
+	fileTotal: Text;	
+	fileAdd: Text;
+	buffer: Ansistring;
+	lineCount: Longint;
+begin
+	lineCount := 0;
 	
+	// Open the total log file.
+	{$I+}
+	Assign(fileTotal, pathTotal);
+	if FileExists(pathTotal) = false then
+	begin
+		// file doesn't exist, create it
+		Rewrite(fileTotal);
+	end
+	else
+	begin
+		// file does exist, open it.
+		Append(fileTotal);
+	end;
 	
+	{$I+}
+	Assign(fileAdd, pathAdd);
+	Reset(fileAdd);
+	
+	repeat
+		Readln(fileAdd, buffer);
+		//WriteLn(buffer);
+		Inc(lineCount);
+		Write('Add2TotalLog(): add file ' + pathAdd + ' to ' + pathTotal + ': ' + IntToStr(lineCount) + #13);
+		WriteLn(fileTotal, buffer);
+	until Eof(fileAdd);
+	
+	Close(fileAdd);
+	
+	Close(fileTotal);
+	WriteLn;
+end; // of 
+
+
 
 procedure ProgTitle();
 begin
@@ -814,6 +871,8 @@ begin
 				WriteLn;
 			
 				Writeln('Attach the contents of ' + pathSkv + ' >>> ' + shareSkv);
+				
+				Add2TotalLog(shareSkv, pathSkv);
 			end
 			else
 				WriteLn('File ' + pathSkv + ' contains no data');
@@ -823,6 +882,10 @@ begin
 	begin
 		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
 	end; // of if
+	
+	// Housekeeping, clean up files
+	DeleteFile(pathLpr);
+	
 end; // of procedure ProgRun
 
 
