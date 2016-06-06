@@ -89,10 +89,9 @@ var
 	headerPosArray: THeaderPosArray;
 	eventArray: TEventArray;
 	eventDetailArray: TEventDetailArray;
+	fileLog: CTextFile;
 	
 	
-	
-
 procedure EventRecordAdd(newEventId: integer; newDescription: string);
 //
 //
@@ -508,33 +507,6 @@ begin
 end; // of function GetLocalExportFolder
 
 
-
-function GetPathExport(el: string; sDateTime: string): string;
-//
-//	Return a path to an export file in format, parts:
-//	
-//	1) Computer name (VM00AS0234 > 023)
-//	2) -
-//	3) EventLog name
-//	4) -
-//	3) YYYYMMDDHHMMSS
-//	4) -
-//	5) 4 randomly generated characters.
-//
-//var
-//	fn: string;
-begin
-	// Build the file name.
-	//fn := gsComputerName + '-';
-	//fn := fn + LeftStr(el, 3) + '-';
-	//fn := fn + ConvertProperDateTimeToDateTimeFs(sDateTime) + '-';
-	//fn := fn + GetRandomString(8);
-	//GetPathExport := GetLocalExportFolder(el) + '\' + fn;
-	//GetPathExport := GetProgramFolder() + '\' + fn;
-	GetPathExport := SysUtils.GetTempFileName()
-end; // of function GetPathExport
-
-	
 	
 function GetPathLastRun(sEventLog: string): string;
 //
@@ -693,73 +665,90 @@ begin
 	// Build the path of the export file
 	//sPathLpr := GetPathExport(el, sDateTimeLast) + EXTENSION_LPR;
 	// Store the export of Logparser in a temp file on the system in the temp folder.
-	sPathLpr := SysUtils.GetTempFileName();
+	//sPathLpr := SysUtils.GetTempFileName();
+	
+	// GetTempDir add the last \ to the string
+	sPathLpr := SysUtils.GetTempDir() + '[HH]-[NN]-[SS].lpr';
+	sPathLpr := ConvertPathTemplateToRealPath(sPathLpr);
 	
 	WriteLn('ExportEventLog()');
-	WriteLn(' Event log: ', el);
-	WriteLn('   DT Last: ', sDateTimeLast);
-	WriteLn('    DT Now: ', sDateTimeNow);
-	WriteLn(' Export to: ', sPathLpr);
+	WriteLn('   Event log:             ', el);
+	WriteLn('   Date time last export: ', sDateTimeLast);
+	WriteLn('   Date time now:         ', sDateTimeNow);
+	WriteLn('   Export to:             ', sPathLpr);
 	WriteLn;
 	
 	intResult := RunLogparser(sPathLpr, el, sDateTimeLast, sDateTimeNow);
 	if intResult = 0 then
 	begin
 		WriteLn('Logparser ran OK!');
+		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO stage="LogParser" status="OK"');
 		r := sPathLpr;
 	end
 	else
 	begin
 		WriteLn('Logparser returned an error: ', intResult);
+		fileLog.WriteToFile(GetProperDateTime(Now()) + ' ERROR stage="LogParser" status="ERROR" lp_err=' + IntToStr(intResult));
 	end; // if else
 	ExportEventLog := r;
 end; // procedure ExportEventLog
 
 
 
-procedure Add2TotalLog(pathTotal: Ansistring; pathAdd: Ansistring);
-//
-//	Attach the contents of text file pathAdd to the end of pathTotal.
-//
-var	
-	fileTotal: Text;	
-	fileAdd: Text;
-	buffer: Ansistring;
-	lineCount: Longint;
+procedure MoveFileToSplunk(pathSource: AnsiString);
+var
+	folderDest: AnsiString;
+	folderSource: AnsiString;
+	fileSource: AnsiString;
+	c: AnsiString;
+	p: TProcess;
+	r: integer;
 begin
-	lineCount := 0;
-	
-	// Open the total log file.
-	{$I+}
-	Assign(fileTotal, pathTotal);
-	if FileExists(pathTotal) = false then
+	if FileExists(pathSource) = true then
 	begin
-		// file doesn't exist, create it
-		Rewrite(fileTotal);
+		//WriteLn('MoveFileToSplunk(): move the file ' + pathSkv + ' to the Splunk server');
+	
+		// Read the path template of the SKV file.
+		folderDest := ReadSettingKey(CONFIG_FILE, 'Settings', 'FolderSplunk');
+		// Convert the path template to an actual path
+		folderDest := FixFolderRemove(ConvertPathTemplateToRealPath(folderDest));
+		// Make the folder to make sure it exists
+		MakeFolderTree(folderDest);
+
+		// Get the folder and the path from the pathSource,
+		fileSource := ExtractFileName(pathSource);
+		// Remove any trailing \ in the path, Robocopy does not like this.
+		folderSource := FixFolderRemove(ExtractFilePath(pathSource));
+	
+		WriteLn('MoveFileToSplunk():');
+		WriteLn('   Move the file: ' + fileSource);
+		WriteLn('            from: ' + folderSource);
+		WriteLn('              to: ' + folderDest);
+	
+		c := 'robocopy.exe ' + EncloseDoubleQuote(folderSource) + ' ' + EncloseDoubleQuote(folderDest) + ' ' + EncloseDoubleQuote(fileSource) + ' /mov /r:10 /w:10 /log:rclastmove.log';
+	
+		WriteLn;
+		WriteLn('Running command:');
+		WriteLn(c);
+		WriteLn;
+	
+		// Setup the process to be executed.
+		p := TProcess.Create(nil);
+		p.Executable := 'cmd.exe'; 
+		p.Parameters.Add('/c ' + c);
+		//p.Options := [poWaitOnExit];
+		p.Options := [poWaitOnExit, poNoConsole]; // Branch: test
+		//p.Options := [poWaitOnExit, poUsePipes];
+	
+		// Run the sub process.
+		p.Execute;
+	
+		// Get the return code from the process.
+		r := p.ExitStatus;
+		WriteLn('Returned error level code: ', r);
+		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO rc_return=' + IntToStr(r));
 	end
-	else
-	begin
-		// file does exist, open it.
-		Append(fileTotal);
-	end;
-	
-	{$I+}
-	Assign(fileAdd, pathAdd);
-	Reset(fileAdd);
-	
-	repeat
-		Readln(fileAdd, buffer);
-		//WriteLn(buffer);
-		Inc(lineCount);
-		Write('Add2TotalLog(): add file ' + pathAdd + ' to ' + pathTotal + ': ' + IntToStr(lineCount) + #13);
-		WriteLn(fileTotal, buffer);
-	until Eof(fileAdd);
-	
-	Close(fileAdd);
-	
-	Close(fileTotal);
-	WriteLn;
-end; // of 
+end;
 
 
 
@@ -776,20 +765,33 @@ end; // of procedure ProgramTitle()
 
 
 procedure ProgInit();
+var
+	pathLog: AnsiString;
 begin
+	// Display the program title text.
+	ProgTitle();
+	
+	// Create a PID (Process ID) file for the run of this program.
+	gsPathPid := GetPathOfPidFile();
+
+	pathLog := ReadSettingKey(CONFIG_FILE, 'Settings', 'PathLog');
+	fileLog := CTextFile.Create(pathLog);
+	fileLog.OpenFileWrite();
+	fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO action="start" pid=' + IntToStr(GetCurrentPid()));
+	
 	// Set the defaults for some variables.
 	
 	flagTestmode := StrToBool(ReadSettingKey(CONFIG_FILE, 'Settings', 'Testmode'));
 	if flagTestmode = true then
-		WriteLn('Testmode: ON')
+		WriteLn('Testmode:                  ON')
 	else
-		WriteLn('Testmode: OFF');
+		WriteLn('Testmode:                  OFF');
 	
 	gbFlagConvert := StrToBool(ReadSettingKey(CONFIG_FILE, 'Settings', 'Convert'));
 	if gbFlagConvert = true then
-		WriteLn('Conversion to SKF: ON')
+		WriteLn('Conversion to SKF:         ON')
 	else
-		WriteLn('Conversion to SKF: OFF');
+		WriteLn('Conversion to SKF:         OFF');
 	
 	gbFlagIncludeComputer := StrToBool(ReadSettingKey(CONFIG_FILE,'Settings', 'IncludeComputer'));
 	if gbFlagIncludeComputer = true then
@@ -799,21 +801,15 @@ begin
 	
 	gbFlagVerboseMode := StrToBool(ReadSettingKey(CONFIG_FILE, 'Settings', 'VerboseMode'));
 	if gbFlagVerboseMode = true then
-		WriteLn('Verbose Mode: ON')
+		WriteLn('Verbose Mode:              ON')
 	else
-		WriteLn('Verbose Mode: OFF');
+		WriteLn('Verbose Mode:              OFF');
 	
 	// Get the computer name of where this program is running.
 	gsComputerName := GetCurrentComputerName();
 	
 	giConvertedEvents := 0;
 	
-	// Create a PID (Process ID) file for the run of this program.
-	gsPathPid := GetPathOfPidFile();
-	
-	// Display the program title text.
-	ProgTitle();
-
 	WriteLn();
 end; // of procedure ProgInit()
 
@@ -823,14 +819,8 @@ procedure ProgRun();
 //	Main program run 
 //
 var
-	//e: integer;
-	//folderDestLpr: string;
-	//folderDestSkv: string;
 	pathLpr: string;
 	pathSkv: string;
-	//pathTmp: string;
-	//shareLpr: string;
-	shareSkv: string;
 	sizeLpr: integer;
 begin
 	//sEventLog := 'Security';
@@ -840,6 +830,7 @@ begin
 	if sizeLpr > 0 then
 	begin
 		WriteLn('Export file contains ', sizeLpr, ' bytes.');
+		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO size_lpr=' + IntToStr(sizeLpr));
 		
 		if gbFlagConvert = true then
 		begin
@@ -850,29 +841,19 @@ begin
 			//EventAndEventDetailsShow();
 			
 			// Build the path of the SKV export file.
-			pathSkv := StringReplace(pathLpr, EXTENSION_TMP, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
+			pathSkv := StringReplace(pathLpr, EXTENSION_LPR, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
 			
 			// Convert the file LPR to SKV
 			ConvertLpr(pathLpr, pathSkv);
 			
 			if GetFileSizeInBytes(pathSkv) > 0 then
 			begin
+				WriteLn('Converted ', giConvertedEvents, ' events');
+				
 				// Only attach current SKV file to the daily file when
 				// size is not 0.
 				
-				// Read the path template of the SKV file.
-				shareSkv := ReadSettingKey(CONFIG_FILE, 'Settings', 'ShareSkv');
-			
-				// Convert the template to a real path name
-				shareSkv := ConvertPathTemplateToRealPath(shareSkv);
-
-				MakeFolderTree(shareSkv);
-				WriteLn('ShareSkv: ' + shareSkv);
-				WriteLn;
-			
-				Writeln('Attach the contents of ' + pathSkv + ' >>> ' + shareSkv);
-				
-				Add2TotalLog(shareSkv, pathSkv);
+				MoveFileToSplunk(pathSkv);
 			end
 			else
 				WriteLn('File ' + pathSkv + ' contains no data');
@@ -881,9 +862,11 @@ begin
 	else
 	begin
 		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
+		fileLog.WriteToFile(GetProperDateTime(Now()) + ' WARN message="No data Logparser"');
 	end; // of if
 	
 	// Housekeeping, clean up files
+	DeleteFile(pathLpr);
 	DeleteFile(pathLpr);
 	
 end; // of procedure ProgRun
@@ -892,15 +875,13 @@ end; // of procedure ProgRun
 
 procedure ProgDone();
 begin
-	WriteLn('Converted ', giConvertedEvents, ' events');
-	
 	// Delete the Process ID file.
 	DeleteFile(gsPathPid);
 	
-	//WriteLn('Waiting until a key is pressed');
-	//repeat
-	//until KeyPressed;
-	
+	fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO action="end"');
+	fileLog.CloseFile();
+
+	WriteLn('Completed...');
 	Halt(0);
 end; // of procedure ProgDone()
 
