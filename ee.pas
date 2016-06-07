@@ -37,8 +37,8 @@ uses
 	
 const	
 	CONFIG_FILE = 				'ee.conf';
-	VERSION =					'02';
-	DESCRIPTION =				'Export Events';
+	VERSION =					'03';
+	DESCRIPTION =				'Export Events and convert them to a SKV (Key=Value) formatted file.';
 	EXTENSION_LPR = 			'.lpr';
 	EXTENSION_TMP = 			'.tmp';
 	EXTENSION_SKV = 			'.skv';
@@ -94,6 +94,29 @@ var
 	fileAppLog: CTextFile;
 	
 
+	
+function GetTempFile(fileNameLength: integer): AnsiString;
+//
+//	Generate a path to a temp file.
+//
+//	fileNameLength:	The length of the file name.
+//
+const 
+	upperChar = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+var 
+	CharCount: integer; 
+	fn: AnsiString;
+begin 
+	fn := '';
+	// Initialize the random number generator.
+	Randomize;
+	
+	// Get 4 upper chars.
+	for CharCount := 1 to fileNameLength do 
+		fn := fn + upperChar[random(length(upperChar)) + 1];
+		
+	result := SysUtils.GetTempDir() + fn + '.tmp';
+end; // of GetTempFile
 
 
 procedure AppLogWrite(status: AnsiString; s: AnsiString);
@@ -710,14 +733,17 @@ begin
 	//sPathLpr := SysUtils.GetTempFileName();
 	
 	// GetTempDir add the last \ to the string
-	sPathLpr := SysUtils.GetTempDir() + '[HH]-[NN]-[SS].lpr';
-	sPathLpr := ConvertPathTemplateToRealPath(sPathLpr);
+	//sPathLpr := SysUtils.GetTempDir() + '[HH]-[NN]-[SS].lpr';
+	//sPathLpr := ConvertPathTemplateToRealPath(sPathLpr);
+	
+	// Generate a temp file using the local temp folder with a file name random 12 chars.
+	sPathLpr := GetTempFile(12);
 	
 	WriteLn('ExportEventLog()');
-	WriteLn('   Event log:             ', el);
-	WriteLn('   Date time last export: ', sDateTimeLast);
-	WriteLn('   Date time now:         ', sDateTimeNow);
-	WriteLn('   Export to:             ', sPathLpr);
+	WriteLn('           Event log: ', el);
+	WriteLn('  Date time previous: ', sDateTimeLast);
+	WriteLn('   Date time cuurent: ', sDateTimeNow);
+	WriteLn('           Export to: ', sPathLpr);
 	WriteLn;
 	
 	intResult := RunLogparser(sPathLpr, el, sDateTimeLast, sDateTimeNow);
@@ -736,6 +762,39 @@ begin
 	end; // if else
 	ExportEventLog := r;
 end; // procedure ExportEventLog
+
+
+procedure AttachLocalFileToCentralFile(pathLocal: AnsiString; pathCentral: AnsiString);
+//
+//	Attach the contents of the locally log file to the centrally located log file.
+//	
+//	pathLocal:		Path to the local log file.
+//	pathCentral:	Path to the central located log file.
+//
+var
+	c: AnsiString;
+	p: TProcess;
+	r: integer;
+begin
+	c := 'type ' + pathLocal + ' >>' + pathCentral;
+	
+	WriteLn(c);
+	WriteLn;
+	
+	// Setup the process to be executed.
+	p := TProcess.Create(nil);
+	p.Executable := 'cmd.exe'; 
+	p.Parameters.Add('/c ' + c);
+	//p.Options := [poWaitOnExit];
+	p.Options := [poWaitOnExit, poNoConsole]; // Branch: test
+	
+	// Run the sub process.
+	p.Execute;
+			// Get the return code from the process.
+	r := p.ExitStatus;
+	if r <> 0 then
+		WriteLn('ERROR AttachtLocalFileToCentralFile() return code = ', r);
+end; // of AttachLocalFileToCentralFile
 
 
 
@@ -794,7 +853,6 @@ begin
 		AppLogWrite('INFO', 'stage="Robocopy" rc_return=' + IntToStr(r));
 	end
 end; // of MoveFileToSplunk
-
 
 
 procedure ProgTitle();
@@ -867,9 +925,10 @@ procedure ProgRun();
 //	Main program run 
 //
 var
-	pathLpr: string;
-	pathSkv: string;
+	pathLpr: AnsiString;
+	pathSkv: AnsiString;
 	sizeLpr: integer;
+	pathSplunk: AnsiString;
 begin
 	//sEventLog := 'Security';
 	pathLpr := ExportEventLog('Security');
@@ -890,7 +949,8 @@ begin
 			//EventAndEventDetailsShow();
 			
 			// Build the path of the SKV export file.
-			pathSkv := StringReplace(pathLpr, EXTENSION_LPR, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
+			// Replace the temp extension with the splunk file extention.
+			pathSkv := StringReplace(pathLpr, EXTENSION_TMP, EXTENSION_SKV, [rfIgnoreCase, rfReplaceAll]);
 			
 			// Convert the file LPR to SKV
 			ConvertLpr(pathLpr, pathSkv);
@@ -902,7 +962,16 @@ begin
 				
 				// Only attach current SKV file to the daily file when
 				// size is not 0.
-				MoveFileToSplunk(pathSkv);
+				//MoveFileToSplunk(pathSkv);
+				
+				pathSplunk := ReadSettingKey(CONFIG_FILE, 'Settings', 'PathSplunk');
+				// Convert the path template to an actual path
+				pathSplunk := FixFolderRemove(ConvertPathTemplateToRealPath(pathSplunk));
+				// Make the folder to make sure it exists
+				MakeFolderTree(pathSplunk);
+				
+				//WriteLn('Attach ' + pathSkv + ' to the splunk server ' + pathSplunk);
+				AttachLocalFileToCentralFile(pathSkv, pathSplunk);
 			end
 			else
 			begin
@@ -919,8 +988,11 @@ begin
 	end; // of if
 	
 	// Housekeeping, clean up files
+	// Delete the temp export file
 	DeleteFile(pathLpr);
-	DeleteFile(pathLpr);
+	
+	// Delete the Splunk file.
+	DeleteFile(pathSkv);
 	
 end; // of procedure ProgRun
 
