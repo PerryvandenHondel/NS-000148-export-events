@@ -44,7 +44,8 @@ const
 	EXTENSION_SKV = 			'.skv';
 	CONF_NAME = 				'ee.conf';
 	STEP_MOD =					157;			// Step modulator for echo mod, use a off-number, not rounded as 10, 15, 100, 250 etc. to see the changes.
-	LINE_SEPARATOR = '|';
+	LINE_SEPARATOR = 			'|';
+	APP_NR = 					148;
 
 	
 	
@@ -89,8 +90,49 @@ var
 	headerPosArray: THeaderPosArray;
 	eventArray: TEventArray;
 	eventDetailArray: TEventDetailArray;
-	fileLog: CTextFile;
+	//fileLog: CTextFile;
+	fileAppLog: CTextFile;
 	
+
+
+
+procedure AppLogWrite(status: AnsiString; s: AnsiString);
+//
+//	Write a line to the AppLog, key=value format.
+//
+begin
+	fileAppLog.WriteToFile(GetProperDateTime(Now()) + ' ' + status + ' app=' + IntToStr(APP_NR) + ' ' + s);
+end; // of AppLogWrite
+
+
+
+procedure AppLogOpen(appNumber: integer; path: AnsiString);
+//
+//	Initialize the AppLog, make folder, open file etc.
+//
+begin
+	WriteLn('Application logs: ' + path);
+	MakeFolderTree(path);
+	fileAppLog := CTextFile.Create(path);
+	fileAppLog.OpenFileWrite();
+	
+	AppLogWrite('INFO', 'stage="main" action="start" pid=' + IntToStr(GetCurrentPid()));
+	//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO app=' + IntToStr(APP_NR) + ' action="start" pid=' + IntToStr(GetCurrentPid()));
+end; // of AppLogInit
+
+
+
+procedure AppLogClose();
+//
+//	Close the AppLog file, housekeeping etc.
+//
+begin
+	AppLogWrite('INFO', 'stage="main" action="end"');
+	
+	fileAppLog.CloseFile();
+end; // of AppLogClose
+
+
 	
 procedure EventRecordAdd(newEventId: integer; newDescription: string);
 //
@@ -682,13 +724,15 @@ begin
 	if intResult = 0 then
 	begin
 		WriteLn('Logparser ran OK!');
-		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO stage="LogParser" status="OK"');
+		//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO stage="LogParser" status="OK"');
+		AppLogWrite('INFO', 'stage="LogParser" status="OK"');
 		r := sPathLpr;
 	end
 	else
 	begin
 		WriteLn('Logparser returned an error: ', intResult);
-		fileLog.WriteToFile(GetProperDateTime(Now()) + ' ERROR stage="LogParser" status="ERROR" lp_err=' + IntToStr(intResult));
+		//fileLog.WriteToFile(GetProperDateTime(Now()) + ' ERROR stage="LogParser" status="ERROR" lp_err=' + IntToStr(intResult));
+		AppLogWrite('ERROR', 'stage="LogParser" status="NOK" lp_err=' + IntToStr(intResult));
 	end; // if else
 	ExportEventLog := r;
 end; // procedure ExportEventLog
@@ -746,9 +790,10 @@ begin
 		// Get the return code from the process.
 		r := p.ExitStatus;
 		WriteLn('Returned error level code: ', r);
-		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO rc_return=' + IntToStr(r));
+		//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO rc_return=' + IntToStr(r));
+		AppLogWrite('INFO', 'stage="Robocopy" rc_return=' + IntToStr(r));
 	end
-end;
+end; // of MoveFileToSplunk
 
 
 
@@ -774,10 +819,13 @@ begin
 	// Create a PID (Process ID) file for the run of this program.
 	gsPathPid := GetPathOfPidFile();
 
-	pathLog := ReadSettingKey(CONFIG_FILE, 'Settings', 'PathLog');
-	fileLog := CTextFile.Create(pathLog);
-	fileLog.OpenFileWrite();
-	fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO action="start" pid=' + IntToStr(GetCurrentPid()));
+	pathLog := ReadSettingKey(CONFIG_FILE, 'Settings', 'PathAppLog');
+	pathLog := ConvertPathTemplateToRealPath(pathLog);
+	
+	AppLogOpen(APP_NR, pathLog);
+	
+	//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO app=' + IntToStr(APP_NR) + ' action="start" pid=' + IntToStr(GetCurrentPid()));
+
 	
 	// Set the defaults for some variables.
 	
@@ -830,7 +878,8 @@ begin
 	if sizeLpr > 0 then
 	begin
 		WriteLn('Export file contains ', sizeLpr, ' bytes.');
-		fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO size_lpr=' + IntToStr(sizeLpr));
+		AppLogWrite('INFO', 'stage="Export" size_lpr=' + IntToStr(sizeLpr));
+		//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO size_lpr=' + IntToStr(sizeLpr));
 		
 		if gbFlagConvert = true then
 		begin
@@ -849,20 +898,24 @@ begin
 			if GetFileSizeInBytes(pathSkv) > 0 then
 			begin
 				WriteLn('Converted ', giConvertedEvents, ' events');
+				AppLogWrite('INFO', 'stage="Convert" converted_events=' + IntToStr(giConvertedEvents));
 				
 				// Only attach current SKV file to the daily file when
 				// size is not 0.
-				
 				MoveFileToSplunk(pathSkv);
 			end
 			else
+			begin
+				AppLogWrite('WARN', 'stage="Convert" msg="No events converted');
 				WriteLn('File ' + pathSkv + ' contains no data');
+			end;
 		end;
 	end
 	else
 	begin
 		WriteLn('Export file ', pathLpr, ' is 0 (zero-bytes) file, nothing to do any more...');
-		fileLog.WriteToFile(GetProperDateTime(Now()) + ' WARN message="No data Logparser"');
+		//fileLog.WriteToFile(GetProperDateTime(Now()) + ' WARN message="No data Logparser"');
+		AppLogWrite('WARN', 'stage="Export" msg="No data exported by Logparser"');
 	end; // of if
 	
 	// Housekeeping, clean up files
@@ -878,8 +931,8 @@ begin
 	// Delete the Process ID file.
 	DeleteFile(gsPathPid);
 	
-	fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO action="end"');
-	fileLog.CloseFile();
+	//fileLog.WriteToFile(GetProperDateTime(Now()) + ' INFO app=' + IntToStr(APP_NR) + ' action="end"');
+	AppLogClose();
 
 	WriteLn('Completed...');
 	Halt(0);
