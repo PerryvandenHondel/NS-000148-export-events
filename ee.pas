@@ -1,22 +1,42 @@
 //
-//	EE_MAIN -- Main program loop 
+//	EE.PAS
 //
+//		function ConvertIPv6ToIPv4(const ipv6: Ansistring): Ansistring;
+//		function ConvertProperDateTimeToDateTimeFs(sDateTime: string): string;
+//		function ExportEventLog(el: string) : string;
+//		function FindHeaderPos(labSearch: string): integer;
+//		function GetEventType(eventType: integer): string;
+//		function GetLocalExportFolder(el: string): string;
 //		function GetPathLastRun(sEventLog: string): string;
+//		function InLineIPv6ToIPv4(const line: Ansistring): Ansistring;
 //		function LastRunGet(sEventLog: string): string;
 //		function LastRunPut(sEventLog: string): string;
+//		function ProcessThisEvent(e: integer): boolean;
+//		function RunLogparser(sPathLpr: string; sEventLog: string; sDateTimeLast: string; sDateTimeNow: string): integer;
+//		procedure AppLogClose();
+//		procedure AppLogOpen(appNumber: integer; path: AnsiString);
+//		procedure AppLogWrite(status: AnsiString; s: AnsiString);
+//		procedure CheckForLineProcessing(l: Ansistring);
+//		procedure ConvertLpr(pathLpr: string; pathSkv: string);
+//		procedure EventAndEventDetailsShow();
+//		procedure EventDetailRecordAdd(newEventId: integer; newKeyName: string; newPosition: integer; newIsString: boolean; newDesc: string);
+//		procedure EventRecordAdd(newEventId: integer; newDescription: string);
 //		procedure ExportEventLog(el: string);
+//		procedure MoveFileToSplunk(pathSource: AnsiString);
+//		procedure ProcessHeader(l: Ansistring);
+//		procedure ProcessLineWithEvent(a: TStringArray);
 //		procedure ProgDone();
 //		procedure ProgInit();
 //		procedure ProgRun();
 //		procedure ProgTitle();
+//		procedure ReadEventDefinitions();
 //
-// 
 // folderLpr=\\10.4.222.20\000134-LPR
 // folderSkv=\\10.4.222.20\000134-SKV
 
 
 
-program ee_main;
+program ee148;
 
 
 
@@ -37,7 +57,7 @@ uses
 	
 const	
 	CONFIG_FILE = 				'ee.conf';
-	VERSION =					'02';
+	VERSION =					'03';
 	DESCRIPTION =				'Export Events';
 	EXTENSION_LPR = 			'.lpr';
 	EXTENSION_TMP = 			'.tmp';
@@ -377,6 +397,19 @@ end; // of function GetEventType
 
 
 
+function ConvertIPv6ToIPv4(const ipv6: Ansistring): Ansistring;
+//
+//	Convert a IPv6 text string to an IPv4 text string
+//	e.g. ::ffff:10.145.54.12 ---> 10.145.54.12
+//
+begin
+	if Pos('::ffff:', ipv6) > 0 then
+		ConvertIPv6ToIPv4 := RightStr(ipv6, Length(ipv6) - 7) // Return text without '::ffff:'.
+	else
+		ConvertIPv6ToIPv4 := ipv6;
+end; // of ConvertIPv6ToIPv4
+
+
 procedure ProcessLineWithEvent(a: TStringArray);
 //
 // Only the lines that need to be converted are processed by this procedure.
@@ -418,11 +451,15 @@ begin
 			keyPos := eventDetailArray[x].position;
 			isString := eventDetailArray[x].IsString;
 			//WriteLn('KEY:', keyName, '      POS:', keyPos, '       ISSTR:', isString);
-				
+			
 			// Get the keyvalue from the line array
 			keyValue := a[keyPos];
 			if (RightStr(keyValue, 1) = '$') and (gbFlagIncludeComputer = false) then
 				exit;
+			
+			
+			// Convert a IPv6 value to an IPv4 format.
+			keyValue := ConvertIPv6ToIPv4(keyValue);
 			
 			if Length(keyValue) > 0 then
 			begin
@@ -438,6 +475,16 @@ begin
 	skv.WriteToFile(buffer);
 	//WriteLn('ProcessLine() END=========================================================');
 end;
+
+
+
+function InLineIPv6ToIPv4(const line: Ansistring): Ansistring;
+begin
+	if Pos('::ffff:', line) > 0 then
+		InLineIPv6ToIPv4 := StringReplace(line, '::ffff:', '', [rfIgnoreCase, rfReplaceAll])
+	else
+		InLineIPv6ToIPv4 := line; // return the line unchanged back.
+end; // of InLineIPv6ToIPv4
 
 
 
@@ -714,10 +761,10 @@ begin
 	sPathLpr := ConvertPathTemplateToRealPath(sPathLpr);
 	
 	WriteLn('ExportEventLog()');
-	WriteLn('   Event log:             ', el);
-	WriteLn('   Date time last export: ', sDateTimeLast);
-	WriteLn('   Date time now:         ', sDateTimeNow);
-	WriteLn('   Export to:             ', sPathLpr);
+	WriteLn('              Event log : ', el);
+	WriteLn('  Date time last export : ', sDateTimeLast);
+	WriteLn('          Date time now : ', sDateTimeNow);
+	WriteLn('              Export to : ', sPathLpr);
 	WriteLn;
 	
 	intResult := RunLogparser(sPathLpr, el, sDateTimeLast, sDateTimeNow);
@@ -765,9 +812,9 @@ begin
 		folderSource := FixFolderRemove(ExtractFilePath(pathSource));
 	
 		WriteLn('MoveFileToSplunk():');
-		WriteLn('   Move the file: ' + fileSource);
-		WriteLn('            from: ' + folderSource);
-		WriteLn('              to: ' + folderDest);
+		WriteLn('  Move the file : ' + fileSource);
+		WriteLn('           from : ' + folderSource);
+		WriteLn('             to : ' + folderDest);
 	
 		c := 'robocopy.exe ' + EncloseDoubleQuote(folderSource) + ' ' + EncloseDoubleQuote(folderDest) + ' ' + EncloseDoubleQuote(fileSource) + ' /mov /r:10 /w:10 /log:rclastmove.log';
 	
@@ -781,7 +828,7 @@ begin
 		p.Executable := 'cmd.exe'; 
 		p.Parameters.Add('/c ' + c);
 		//p.Options := [poWaitOnExit];
-		p.Options := [poWaitOnExit, poNoConsole]; // Branch: test
+		p.Options := [poWaitOnExit, poNoConsole];
 		//p.Options := [poWaitOnExit, poUsePipes];
 	
 		// Run the sub process.
